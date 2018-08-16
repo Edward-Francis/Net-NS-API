@@ -4,6 +4,13 @@ use 5.006;
 use strict;
 use warnings;
 
+use Moose;
+use namespace::autoclean;
+
+# IMPORTS
+use Carp;
+use XML::LibXML;
+
 =head1 NAME
 
 Net::NS::API - The great new Net::NS::API!
@@ -15,6 +22,27 @@ Version 0.01
 =cut
 
 our $VERSION = '0.01';
+
+
+# ROLES
+
+with qw(
+    Net::NS::API::ActueleVertrekTijden
+    Net::NS::API::StationsV2
+);
+
+# PRIVATE METHODS
+
+sub _xml_document_from_string {
+    return XML::LibXML->load_xml( string => $_[1] );
+}
+
+
+sub _make_request {
+    my ( $self, $method, $url, %args ) = @_;
+    # FIXME:
+    # implement me
+}
 
 
 =head1 SYNOPSIS
