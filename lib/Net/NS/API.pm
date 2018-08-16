@@ -29,6 +29,7 @@ our $VERSION = '0.01';
 with qw(
     Net::NS::API::ActueleVertrekTijden
     Net::NS::API::StationsV2
+    Net::NS::API::Storingen
 );
 
 # PRIVATE METHODS
