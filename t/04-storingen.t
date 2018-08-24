@@ -26,7 +26,7 @@ my $xml = <<EOF;
 EOF
 
 
-my $api = Net::NS::API->new;
+my $api = Net::NS::API->new( username => 'user', password => 'password' );
 isa_ok $api, 'Net::NS::API';
 
 

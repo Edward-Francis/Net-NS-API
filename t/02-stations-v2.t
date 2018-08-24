@@ -1,4 +1,5 @@
-use Net::NS::API ();
+use Net::NS::API       ();
+use Test::Mock::Simple ();
 use Test::Most tests => 4;
 
 
@@ -25,15 +26,16 @@ my $xml = <<EOF;
 EOF
 
 
-my $api = Net::NS::API->new;
+my $mock = Test::Mock::Simple->new( module => 'HTTP::Tiny' );
+$mock->add( request => sub { { content => $xml, headers => {} } } );
+ok $mock, 'HTTP::Tiny method mocked';
+
+
+my $api = Net::NS::API->new( username => 'user', password => 'password' );
 isa_ok $api, 'Net::NS::API';
 
 
-my $xml_document = $api->_xml_document_from_string($xml);
-isa_ok $xml_document, 'XML::LibXML::Document';
-
-
-my $stations = $api->_format_stations_v2($xml_document);
+my $stations = $api->stations_v2;
 ok $stations, 'stations data returned';
 
 

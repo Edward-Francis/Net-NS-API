@@ -10,16 +10,13 @@ requires '_make_request';
 
 sub stations_v2 {
     my ( $self, %args ) = @_;
-    # FIXME:
-    # Set correct url
-    my $xml = $self->_make_request( 'GET', 'url' );
+    my $xml = $self->_make_request( 'GET', 'ns-api-stations-v2' );
     my $data = $self->_format_stations_v2($xml);
     return $data;
 }
 
 
 # PRIVATE METHDOS
-
 
 sub _format_stations_v2 {
     my ( $self, $dom ) = @_;
@@ -36,8 +33,8 @@ sub _format_stations_v2 {
             latitude     => $_->findvalue('.//Lat'),
             longitude    => $_->findvalue('.//Lon'),
             abbr_name    => $_->findvalue('.//Namen/Kort'),
-            full_name    => $_->findvalue('.//Namen/Middel'),
-            short_name   => $_->findvalue('.//Namen/Lang'),
+            full_name    => $_->findvalue('.//Namen/Lang'),
+            short_name   => $_->findvalue('.//Namen/Middel'),
         );
 
         if ( $_->exists('.//Synoniemen') ) {

@@ -1,15 +1,112 @@
 package Net::NS::API;
 
-use 5.006;
-use strict;
-use warnings;
-
 use Moose;
 use namespace::autoclean;
 
 # IMPORTS
+
+use URI;
 use Carp;
-use XML::LibXML;
+use HTTP::Tiny  ();
+use XML::LibXML ();
+use MIME::Base64 qw(encode_base64);
+use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
+
+# VERSION
+
+our $VERSION = '0.01';
+
+
+# ATTRIBUTES
+
+has 'username' => (
+    is       => 'ro',
+    isa      => 'Str',
+    required => 1,
+);
+
+has 'password' => (
+    is       => 'ro',
+    isa      => 'Str',
+    required => 1,
+);
+
+has '_client' => (
+    is      => 'ro',
+    lazy    => 1,
+    builder => '_build_client',
+);
+
+
+# ROLES
+
+with qw(
+    Net::NS::API::ActueleVertrekTijden
+    Net::NS::API::StationsV2
+    Net::NS::API::Storingen
+    Net::NS::API::TreinPlanner
+);
+
+
+# PRIVATE METHODS
+
+
+sub _make_request {
+    my ( $self, $method, $path, %args ) = @_;
+
+    my $uri = URI->new('http://webservices.ns.nl');
+    $uri->path($path);
+
+    # FIXME: lets log something
+
+    my $response = $self->_client->request( $method, $uri );
+    my $content  = $response->{content};
+    my $encoding = $response->{headers}->{'content-encoding'};
+    my $xml_string;
+
+
+    if ( $encoding && $encoding eq 'gzip' ) {
+        gunzip \$content => \$xml_string
+            or croak sprintf( 'Failed to gunzip content: %s', $GunzipError );
+    }
+
+    $xml_string //= $content;
+
+
+    my $dom = $self->_xml_document_from_string($xml_string);
+
+    # FIXME: what if xml cannot be read....
+
+    # FIXME: do error handling
+
+    return $dom;
+}
+
+
+sub _xml_document_from_string {
+    return XML::LibXML->load_xml( string => $_[1], encoding => 'UTF-8' );
+}
+
+
+# BUILDERS
+
+sub _build_client {
+    my $self = $_[0];
+
+    my $credentials = sprintf( '%s:%s', $self->username, $self->password );
+    my $authorization = sprintf 'Basic %s', encode_base64( $credentials, '' );
+
+    return HTTP::Tiny->new(
+        default_headers => {
+            'Authorization'   => $authorization,
+            'Accept'          => 'text/xml; charset=UTF-8',
+            'Accept-Encoding' => 'gzip',
+            'User-Agent' =>
+                'Net-NS-API (https://github.com/Edward-Francis/Net-NS-API)',
+        },
+
+    );
+}
 
 =head1 NAME
 
@@ -19,68 +116,37 @@ Net::NS::API - The great new Net::NS::API!
 
 Version 0.01
 
-=cut
-
-our $VERSION = '0.01';
-
-
-# ROLES
-
-with qw(
-    Net::NS::API::ActueleVertrekTijden
-    Net::NS::API::StationsV2
-    Net::NS::API::Storingen
-);
-
-# PRIVATE METHODS
-
-sub _xml_document_from_string {
-    return XML::LibXML->load_xml( string => $_[1] );
-}
-
-
-sub _make_request {
-    my ( $self, $method, $url, %args ) = @_;
-    # FIXME:
-    # implement me
-}
-
+=head1 DESCRIPTION
 
 =head1 SYNOPSIS
 
-Quick summary of what the module does.
+FIXME
 
 Perhaps a little code snippet.
 
     use Net::NS::API;
 
-    my $foo = Net::NS::API->new();
-    ...
+    my $api = Net::NS::API->new( username => $username, password => $password );
+    
+FIXME
 
-=head1 EXPORT
+=head1 METHODS
 
-A list of functions that can be exported.  You can delete this section
-if you don't export anything, such as for a purely object-oriented module.
+FIXME
 
-=head1 SUBROUTINES/METHODS
+=head1 ATTRIBUTES
 
-=head2 function1
+=over 
 
-=cut
+=item username (required)
 
-sub function1 {
-}
+=item password (required)
 
-=head2 function2
-
-=cut
-
-sub function2 {
-}
+=back
 
 =head1 AUTHOR
 
-Edward Francis, C<< <edwardafrancis at gmail.com> >>
+Edward Francis, C<edwardafrancis@gmail.com>
 
 =head1 BUGS
 
@@ -88,15 +154,11 @@ Please report any bugs or feature requests to C<bug-net-ns-api at rt.cpan.org>, 
 the web interface at L<https://rt.cpan.org/NoAuth/ReportBug.html?Queue=Net-NS-API>.  I will be notified, and then you'll
 automatically be notified of progress on your bug as I make changes.
 
-
-
-
 =head1 SUPPORT
 
 You can find documentation for this module with the perldoc command.
 
     perldoc Net::NS::API
-
 
 You can also look for information at:
 
@@ -119,10 +181,6 @@ L<https://cpanratings.perl.org/d/Net-NS-API>
 L<https://metacpan.org/release/Net-NS-API>
 
 =back
-
-
-=head1 ACKNOWLEDGEMENTS
-
 
 =head1 LICENSE AND COPYRIGHT
 
@@ -164,7 +222,6 @@ CONTRIBUTOR WILL BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, OR
 CONSEQUENTIAL DAMAGES ARISING IN ANY WAY OUT OF THE USE OF THE PACKAGE,
 EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 =cut
 
-1; # End of Net::NS::API
+1;
