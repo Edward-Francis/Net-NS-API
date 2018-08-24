@@ -17,10 +17,8 @@ sub actuele_vertrek_tijden {
     my $station = $args{station}
         or croak 'actuele_vertrek_tijden requires arguement `station`';
 
-    # FIXME:
-    # Set correct url
-    my $xml = $self->_make_request( 'GET', 'url', station => $station );
-    my $data = $self->_format_avt($xml);
+    my $xml = $self->_make_request( 'GET', 'ns-api-avt', station => $station );
+    my $data = $self->_format_actuele_vertrek_tijden($xml);
     return $data;
 }
 
@@ -39,7 +37,7 @@ sub _format_actuele_vertrek_tijden {
         my $change = $platform->getAttribute('wijziging') eq 'true' ? 1 : 0;
 
         my %avt = (
-            comment            => $_->findvalue('.//Comments'),
+            comments           => [],
             delay_text         => $_->findvalue('.//VertrekVertragingTekst'),
             delay_time         => $_->findvalue('.//VertrekVertraging'),
             departure_platform => $platform->textContent,
@@ -52,15 +50,25 @@ sub _format_actuele_vertrek_tijden {
             train_type                => $_->findvalue('.//TreinSoort'),
             travel_tip                => $_->findvalue('.//ReisTip'),
 
-            # FIMXE can there be multiple comments?
-            # FIXME: what is Opmerkingen
         );
 
-        # replace empty strings with undef
-        for (keys %avt) {
-            $avt{$_} = undef if $avt{$_} eq ''
+
+        for ( $_->findnodes('.//Opmerkingen/Opmerking') ) {
+
+            my $comments = $_->textContent;
+
+            # remove additional whitespace from the beginning and end
+            $comments =~ s/^\s+//;
+            $comments =~ s/\s+$//;
+
+            push @{ $avt{comments} }, $comments;
         }
 
+
+        # replace empty strings with undef
+        for ( keys %avt ) {
+            $avt{$_} = undef if $avt{$_} eq '';
+        }
 
         push @avt, \%avt;
     }

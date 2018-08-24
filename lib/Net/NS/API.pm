@@ -7,6 +7,7 @@ use namespace::autoclean;
 
 use URI;
 use Carp;
+use URI::QueryParam;
 use HTTP::Tiny  ();
 use XML::LibXML ();
 use MIME::Base64 qw(encode_base64);
@@ -57,6 +58,9 @@ sub _make_request {
     my $uri = URI->new('http://webservices.ns.nl');
     $uri->path($path);
 
+    # add query params
+    $uri->query_param( $_ => $args{$_} ) for keys %args;
+
     # FIXME: lets log something
 
     my $response = $self->_client->request( $method, $uri );
@@ -71,7 +75,6 @@ sub _make_request {
     }
 
     $xml_string //= $content;
-
 
     my $dom = $self->_xml_document_from_string($xml_string);
 

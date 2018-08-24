@@ -1,4 +1,5 @@
-use Net::NS::API ();
+use Net::NS::API       ();
+use Test::Mock::Simple ();
 use Test::Most tests => 4;
 
 my $xml = <<EOF;
@@ -11,25 +12,30 @@ my $xml = <<EOF;
         <RouteTekst>Amstel, Utrecht C, Eindhoven</RouteTekst>
         <Vervoerder>NS</Vervoerder>
         <VertrekSpoor wijziging="true">5b</VertrekSpoor>        
+        <Opmerkingen>
+            <Opmerking>Rijdt via een andere route</Opmerking>
+        </Opmerkingen>
     </VertrekkendeTrein>
 </ActueleVertrekTijden>
 EOF
+
+
+my $mock = Test::Mock::Simple->new( module => 'HTTP::Tiny' );
+$mock->add( request => sub { { content => $xml, headers => {} } } );
+ok $mock, 'HTTP::Tiny method mocked';
 
 
 my $api = Net::NS::API->new( username => 'user', password => 'password' );
 isa_ok $api, 'Net::NS::API';
 
 
-my $xml_document = $api->_xml_document_from_string( $xml );
-isa_ok $xml_document, 'XML::LibXML::Document';
-
-
-my $avt = $api->_format_actuele_vertrek_tijden($xml_document);
+my $avt = $api->actuele_vertrek_tijden( station => 'Utrecht' );
 ok $avt, 'avt data returned';
+
 
 my @expected = (
     {    #
-        comment                   => undef,
+        comments                  => ['Rijdt via een andere route'],
         delay_text                => undef,
         delay_time                => undef,
         departure_platform        => '5b',
